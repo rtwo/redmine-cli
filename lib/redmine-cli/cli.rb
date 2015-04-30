@@ -4,7 +4,6 @@ require 'redmine-cli/config'
 require 'redmine-cli/resources'
 require 'redmine-cli/generators/install'
 require 'rubygems'
-require 'ruby-debug'
 require 'interactive_editor'
 require 'yaml'
 require 'pp'
@@ -42,7 +41,7 @@ module Redmine
         unless options.std_output
           # collection.sort! {|i,j| i.status.id <=> j.status.id }
           collection.sort! {|i,j| i.priority.id <=> j.priority.id }
-          
+
           # Retrieve the list of issue fields in selected_fields
           issues = collection.collect { |issue|
             selected_fields.collect {|key|
@@ -50,7 +49,7 @@ module Redmine
               assignee = ""
               assignee = issue.assigned_to.name if issue.respond_to?(:assigned_to)
               version = issue.fixed_version.name if issue.respond_to?(:fixed_version)
-  
+
               # Hack, because I don't feel like spending much time on this
               if options.version
                 next unless version == options.version
@@ -62,7 +61,7 @@ module Redmine
               # Finally, if that fails, we let the value simply be "".
               #
               val = ""
-  
+
               begin
                 # If this is a built-in field for which we have a title, ref, and display method, use that.
                 field = fields.fetch(key)
@@ -76,7 +75,7 @@ module Redmine
               rescue IndexError
                 # Otherwise, let's look for a custom field by that name.
                 if issue.attributes[:custom_fields].present?
-                  issue.attributes[:custom_fields].collect { | field | 
+                  issue.attributes[:custom_fields].collect { | field |
                     if field.attributes.fetch("name") == key
                       val = field.attributes.fetch("value")
                     end
@@ -102,7 +101,7 @@ module Redmine
             print_table(issues)
             say "#{collection.count} issues - #{link_to_project(params[:project_id])}", :yellow
           end
-          
+
           # Clean up after ourselves
           issues.compact!
         else
@@ -135,7 +134,7 @@ module Redmine
           say "You must specify at least one field to edit", :red
           exit
         end
-        
+
         data = {}
         options.each { | key, val |
           # Set the initial value to one of:
@@ -151,7 +150,7 @@ module Redmine
 
           if data[key] == initialval
             # If the user didn't actually edit the field, then don't submit it for update.
-            say "You did not change the value, so the edit to #{key} was ignored.", :red 
+            say "You did not change the value, so the edit to #{key} was ignored.", :red
             data.delete(key)
           end
         }
@@ -232,7 +231,7 @@ module Redmine
           username = ask("Username?")
         end
 
-        password = ask_password("Password?")
+        apitoken = ask("API-Token?")
 
         if fieldcsv.blank?
           fieldcsv = ask("\nWhat fields should be displayed in \"redmine list\"?\n\nPossible values are: [" + fields.keys.join(", ") + "]\n\nEnter a list of comma-separated fields: ")
@@ -240,7 +239,7 @@ module Redmine
 
         list_fields = fieldcsv.split(",")
 
-        arguments = [url, username, password, list_fields]
+        arguments = [url, username, apitoken, list_fields]
         arguments.concat(["--test"]) if options.test
 
         Redmine::Cli::Generators::Install.start(arguments)
@@ -259,17 +258,17 @@ module Redmine
         #
         def print_table(array, options = {}) # rubocop:disable MethodLength
           return if array.empty?
-  
+
           formats, indent, colwidth = [], options[:indent].to_i, options[:colwidth]
           options[:truncate] = terminal_width if options[:truncate] == true
-  
+
           formats << "%-#{colwidth + 2}s" if colwidth
           start = colwidth ? 1 : 0
-  
+
           colcount = array.max { |a, b| a.size <=> b.size }.size
-  
+
           maximas = []
-  
+
           start.upto(colcount - 1) do |index|
             maxima = array.map { |row|
               skip = false
@@ -300,16 +299,16 @@ module Redmine
               formats << "%-#{maxima + 2}s"
             end
           end
-  
+
           formats[0] = formats[0].insert(0, ' ' * indent)
           formats << '%s'
 
           array.each do |row|
             sentence = ''
-  
+
             row.each_with_index do |column, index|
               maxima = maximas[index]
-  
+
               if column.is_a?(Numeric)
                 if index == row.size - 1
                   # Don't output 2 trailing spaces when printing the last column
@@ -322,7 +321,7 @@ module Redmine
               end
               sentence << f % column.to_s
             end
-  
+
             sentence = truncate(sentence, options[:truncate]) if options[:truncate]
             puts sentence
           end
@@ -399,7 +398,7 @@ module Redmine
               # This is sort of a hack... ANSI sequences make it hard to figure out column lengths.
               # So we make all fields the same length and with the same number of unprintable ansi
               # sequence characters.
-  
+
               when "Low" then       "Low      ".blue.blue.blue
               when "Normal" then    "Normal   ".green.green.green
               when "High" then      "High     ".red.red.red
@@ -435,14 +434,14 @@ module Redmine
             queries = Query.fetch_all.collect { |query|
                     [ query.name, query.id ]
             }
-  
+
             priorities = {}
             status = {}
             Issue.fetch_all.each do |issue|
                 priorities[issue.priority.name] = issue.priority.id if issue.priority
                 status[issue.status.name] = issue.status.id if issue.status
             end
-          
+
             # TODO: Need to determine where to place cache file based on
             #       config file location.
             File.open(File.expand_path('~/.redmine_cache'), 'w') do |out|
@@ -471,7 +470,7 @@ module Redmine
           rescue NoMethodError
             return value.attributes.fetch("name") if value.id.to_i != 0
           end
-          
+
           if Redmine::Cli::config[mapping].nil? || (mapped = Redmine::Cli::config[mapping][value]).nil?
             if !(mapped = get_mapping_from_cache(mapping, value))
               update_mapping_cache
@@ -513,13 +512,6 @@ module Redmine
           end
         rescue ActiveResource::ResourceNotFound
           say "Could not find ticket: #{ticket}", :red
-        end
-
-        def ask_password(prompt)
-          system "stty -echo"
-          password = ask(prompt)
-          system "stty echo"
-          password
         end
 
         def fields()

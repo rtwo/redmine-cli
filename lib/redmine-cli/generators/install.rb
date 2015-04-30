@@ -11,7 +11,7 @@ module Redmine::Cli::Generators
 
     argument :url,          :type => :string
     argument :username,     :type => :string
-    argument :password,     :type => :string
+    argument :apitoken,     :type => :string
     argument :list_fields,  :type => :array
     class_option :test,  :type => :boolean
     def copy_configuration_file

@@ -1,6 +1,6 @@
 url: "<%= url %>"
 username: "<%= username %>"
-password: "<%= password %>"
+apitoken: "<%= apitoken %>"
 default_project_id: 1
 disable_caching: false
 colorize: true
